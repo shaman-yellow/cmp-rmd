@@ -53,5 +53,4 @@ function source:confirm(completion_item, callback)
   callback(completion_item)
 end
 
--- Register the source
-cmp.register_source('cmp-rmd', source)
+return source
