@@ -1,56 +1,41 @@
 
--- lua/cmp-rmd/init.lua
 local cmp = require'cmp'
-
 local source = {}
 
--- Check if the source is available (only for rmd filetype)
+source.new = function()
+  return setmetatable({}, { __index = source })
+end
+
 function source:is_available()
-  local filetype = vim.bo.filetype
-  return filetype == 'rmd'
+  return vim.bo.filetype == 'rmd'
 end
 
--- Custom keyword pattern to trigger completion
-function source:get_keyword_pattern()
-  return [[\@ref\(.*:[^)]*\)]]
+function source:get_debug_name()
+  return 'rmd'
 end
 
--- Check if the cursor is within the \@ref() pattern and after the colon
-local function is_in_ref_pattern()
-  local line = vim.api.nvim_get_current_line()
-  local col = vim.api.nvim_win_get_cursor(0)[2]
-  local before_cursor = line:sub(1, col + 1)
-  return before_cursor:match("\\@ref%([^:]+:[^)]*$") ~= nil
-end
-
--- Gather completion items
-function source:complete(params, callback)
-  if not is_in_ref_pattern() then
-    callback({ items = {} })
-    return
-  end
-
+local function read_lines_from_files(dir)
   local items = {}
-  local bufnr = vim.api.nvim_get_current_buf()
-  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  local scan = require'plenary.scandir'
+  local files = scan.scan_dir(dir, { hidden = true, depth = 1 })
 
-  for _, line in ipairs(lines) do
-    if vim.startswith(line, "#| ") then
-      table.insert(items, { label = line:sub(4) })
+  for _, file in ipairs(files) do
+    for line in io.lines(file) do
+      table.insert(items, { label = line })
     end
   end
 
-  callback({ items = items })
+  return items
 end
 
--- Resolve completion item details (not used in this example)
-function source:resolve(completion_item, callback)
-  callback(completion_item)
-end
-
--- Confirm the completion item (not used in this example)
-function source:confirm(completion_item, callback)
-  callback(completion_item)
+function source:complete(params, callback)
+  -- local dir_path = vim.fn.expand('~/.config/nvim/SelectCompletion')
+  local dir_path = vim.g.SelectCompletion or ''
+  local items = {}
+  if vim.fn.isdirectory(dir_path) == 1 then
+    items = read_lines_from_files(dir_path)
+  end
+  callback({ items = items, isIncomplete = false })
 end
 
 return source
